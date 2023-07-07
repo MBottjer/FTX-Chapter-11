@@ -1,0 +1,30 @@
+/* styles.css */
+
+.navbar {
+    overflow: hidden;
+    background-color: #fff; /* change this to any color you like */
+    display: flex; /* aligns items on a line */
+}
+
+.navbar a {
+    color: #000; /* this is black, change to any color you prefer */
+    text-align: left; /* aligns text to the left */
+    padding: 14px;
+    text-decoration: none;
+    font-size: 17px;
+}
+
+.navbar a:hover {
+    background-color: #ddd;
+    color: black;
+}
+
+.navbar img {
+    height: 50px;
+    margin-right: 20px;
+}
+
+body {
+    margin: 0;
+    padding: 20px;
+}
