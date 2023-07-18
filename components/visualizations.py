@@ -154,7 +154,7 @@ def create_exchange_graphs(ftx_intl_crypto_df, ftx_international_related_party_d
 
         # Add the graph to the list of exchange graphs
         exchange_graph = dcc.Graph(id=f'{exchange_names[i]}-exchange-overview-graph', figure=fig)
-        exchange_graphs.append(html.Div(exchange_graph, className="three columns", style={'margin-right': '140px'}))
+        exchange_graphs.append(html.Div(exchange_graph, className="three columns", style={'marginRight': '140px'}))
     return exchange_graphs
 
 def create_visualizations(dataframes):

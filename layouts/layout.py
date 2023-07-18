@@ -28,6 +28,6 @@ def create_layout(visualizations):
         html.H3([html.P("Silo Overview ($ in mm)")]),
         dbc.Row(silo_cols),
     ],
-    style={'font-family': 'Roboto'})
+    style={'fontFamily': 'Roboto'})
 
     return layout
