@@ -4,6 +4,8 @@
     overflow: hidden;
     background-color: #fff; /* change this to any color you like */
     display: flex; /* aligns items on a line */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 4px;
 }
 
 .navbar a {
@@ -25,6 +27,18 @@
 }
 
 body {
-    margin: 0;
-    padding: 20px;
+    margin: 0px;
+}
+
+.gradient-background {
+
+  width: 100%;
+  height: 100%;
+  background-color: #0093E9;
+  background-image: linear-gradient(330deg, #0093E9 0%, #80D0C7 38%, #ffffff 72%);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  z-index: -2;
 }
