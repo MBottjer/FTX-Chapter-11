@@ -8,62 +8,31 @@ CATEGORY_A_ASSETS_US = ["Cash / Stablecoin", "BTC", "ETH", "SOL", "DOGE", "MATIC
 CATEGORY_B_ASSETS = ["FTT", "MAPS", "SRM", "FIDA", "MEDIA", "All Other - Category B"]
 ASSET_VALUE_COL = "Located Assets"
 
-def create_dotcom_dict(ftx_intl_crypto_df: pd.DataFrame, ftx_intnl_related_party_df: pd.DataFrame) -> dict:
-    ftx_dotcom_exchange = {
-        "assets": {
-            "Stablecoins": ftx_intl_crypto_df.loc["Cash / Stablecoin", ASSET_VALUE_COL],
-            "BTC": ftx_intl_crypto_df.loc["BTC", ASSET_VALUE_COL],
-            "ETH": ftx_intl_crypto_df.loc["ETH", ASSET_VALUE_COL],
-            "SOL": ftx_intl_crypto_df.loc["SOL", ASSET_VALUE_COL],
-            "XRP": ftx_intl_crypto_df.loc["XRP", ASSET_VALUE_COL],
-            "BNB": ftx_intl_crypto_df.loc["BNB", ASSET_VALUE_COL],
-            "MATIC": ftx_intl_crypto_df.loc["MATIC", ASSET_VALUE_COL],
-            "TRX": ftx_intl_crypto_df.loc["TRX", ASSET_VALUE_COL],
-            "All Other - Category A": ftx_intl_crypto_df.loc["All Other - Category A", ASSET_VALUE_COL],
-            "FTT": ftx_intl_crypto_df.loc["FTT", ASSET_VALUE_COL],
-            "MAPS": ftx_intl_crypto_df.loc["MAPS", ASSET_VALUE_COL],
-            "SRM": ftx_intl_crypto_df.loc["SRM", ASSET_VALUE_COL],
-            "FIDA": ftx_intl_crypto_df.loc["FIDA", ASSET_VALUE_COL],
-            "MEDIA": ftx_intl_crypto_df.loc["MEDIA", ASSET_VALUE_COL],
-            "All Other - Category B": ftx_intl_crypto_df.loc["All Other - Category B", ASSET_VALUE_COL],
-            "Receivables": ftx_intnl_related_party_df["Estimated Receivables"].sum(),
-        },
-        "liabilities": {
-            "Customer Payables - Category A": ftx_intl_crypto_df.loc[CATEGORY_A_ASSETS_INTL, "Customer Payables"].sum(),
-            "Customer Payables - Category B": ftx_intl_crypto_df.loc[CATEGORY_B_ASSETS, "Customer Payables"].sum(),
-            "Related Party Payables": ftx_intnl_related_party_df["Estimated Payables"].sum(),
-        }
-    }
-    return ftx_dotcom_exchange
+def create_exchange_dict(crypto_df: pd.DataFrame, related_party_df: pd.DataFrame) -> dict:
+    # Extract the column name dynamically. Assume that the required column is the last one.
 
-def create_us_exchange_dict(ftx_us_crypto_df: pd.DataFrame, ftx_us_related_party_df: pd.DataFrame) -> dict:
+    # Identify Category A and B assets. Assume they are marked by "- Category A" and "- Category B" in index.
+    category_a_assets = crypto_df.index[crypto_df.index.str.contains('- Category A')]
+    category_b_assets = crypto_df.index[crypto_df.index.str.contains('- Category B')]
 
-    ftx_us_exchange = {
-        "assets": {
-            "Stablecoins": ftx_us_crypto_df.loc["Cash / Stablecoin", ASSET_VALUE_COL],
-            "BTC": ftx_us_crypto_df.loc["BTC", ASSET_VALUE_COL],
-            "ETH": ftx_us_crypto_df.loc["ETH", ASSET_VALUE_COL],
-            "SOL": ftx_us_crypto_df.loc["SOL", ASSET_VALUE_COL],
-            "DOGE": ftx_us_crypto_df.loc["DOGE", ASSET_VALUE_COL],
-            "MATIC": ftx_us_crypto_df.loc["MATIC", ASSET_VALUE_COL],
-            "LINK": ftx_us_crypto_df.loc["LINK", ASSET_VALUE_COL],
-            "SHIB": ftx_us_crypto_df.loc["SHIB", ASSET_VALUE_COL],
-            "TRX": ftx_us_crypto_df.loc["TRX", ASSET_VALUE_COL],
-            "UNI": ftx_us_crypto_df.loc["UNI", ASSET_VALUE_COL],
-            "ALGO": ftx_us_crypto_df.loc["ALGO", ASSET_VALUE_COL],
-            "PAXG": ftx_us_crypto_df.loc["PAXG", ASSET_VALUE_COL],
-            "ETHW": ftx_us_crypto_df.loc["ETHW", ASSET_VALUE_COL],
-            "WBTC": ftx_us_crypto_df.loc["WBTC", ASSET_VALUE_COL],
-            "WETH": ftx_us_crypto_df.loc["WETH", ASSET_VALUE_COL],
-            "All Other - Category A": ftx_us_crypto_df.loc["All Other - Category A", ASSET_VALUE_COL],
-            "Receivables": ftx_us_related_party_df["Estimated Receivables"].sum(),
-        },
-        "liabilities": {
-            "Customer Payables - Category A": ftx_us_crypto_df.loc[CATEGORY_A_ASSETS_US, "Customer Payables"].sum(),
-            "Related Party Payables": ftx_us_related_party_df["Estimated Payables"].sum(),
-        }
+    assets_dict = {
+        asset: crypto_df.loc[asset, ASSET_VALUE_COL] for asset in crypto_df.index
     }
-    return ftx_us_exchange
+    assets_dict["Receivables"] = related_party_df["Estimated Receivables"].sum()
+
+    # Create the dictionary for liabilities
+    liabilities_dict = {
+        liability: crypto_df.loc[liability, "Customer Payables"] for liability in crypto_df.index
+    }
+    liabilities_dict["Related Party Payables"] = related_party_df["Estimated Payables"].sum()
+
+    # Create the final exchange dictionary
+    exchange = {
+        "assets": assets_dict,
+        "liabilities": liabilities_dict,
+    }
+
+    return exchange
 
 def create_cash_graphs(cash_df: pd.DataFrame):
     cash_fig = go.Figure(data=[
@@ -110,13 +79,12 @@ def create_silo_graphs(assets_df: pd.DataFrame, liabilities_df: pd.DataFrame):
 
 def create_exchange_graph(asset_df, related_party_df, exchange=""):
     if exchange == "US":
-        exchange_name = "FTX.US"
-        exchange_id = "ftx_us"
-        exchange = create_us_exchange_dict(asset_df, related_party_df)
+        exchange_name, exchange_id = "FTX.US", "ftx_us"
+        # exchange = create_us_exchange_dict(asset_df, related_party_df)
     else:
-        exchange_name = "FTX.COM"
-        exchange_id = "ftx_dotcom"
-        exchange = create_dotcom_dict(asset_df, related_party_df)
+        exchange_name, exchange_id = "FTX.COM", "ftx_dotcom"
+        # exchange = create_dotcom_dict(asset_df, related_party_df)
+    exchange = create_exchange_dict(asset_df, related_party_df)
 
     # Create a new figure for the exchange
     fig = go.Figure()

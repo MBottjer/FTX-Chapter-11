@@ -20,6 +20,7 @@ def create_layout(visualizations):
                                 options=[
                                     {'label': 'Subordinate Sam Coins', 'value': 'ZERO_SAM'},
                                     {'label': 'Subcon: Alameda + Dotcom + Ventures', 'value': 'SUBCON'},
+                                    {'label': 'Subcon: WRS', 'value': 'SUBCON_US'},
                                     {'label': 'Subordinate Alameda', 'value': 'ALAMEDA_SUB'},
                                 ],
                                 value=[]  # Default checked items
@@ -28,7 +29,7 @@ def create_layout(visualizations):
                 ]),
                 html.H3([html.P("Silo Overview ($ in mm)")]),
                 dbc.Row(silo_cols),
-            ], style={'marginTop': '20px'}),  # adjust as needed
+            ], style={'padding': '10px'}),  # adjust as needed
         ]),
     ], style={'fontFamily': 'Roboto', 'padding': '0px'})  # added padding: 0px
 
