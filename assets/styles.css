@@ -2,43 +2,62 @@
 
 .navbar {
     overflow: hidden;
-    background-color: #fff; /* change this to any color you like */
-    display: flex; /* aligns items on a line */
+    background-color: #0A0E17;
+    display: flex;
+    justify-content: space-between; /* Distributes the space between the items */
+    align-items: center; /* Centers the items vertically */
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    padding: 4px;
+    padding: 16px;
+    border-bottom: 1px solid rgb(43, 46, 59);
 }
 
 .navbar a {
-    color: #000; /* this is black, change to any color you prefer */
+    color: #fff; /* this is black, change to any color you prefer */
     text-align: left; /* aligns text to the left */
-    padding: 14px;
     text-decoration: none;
     font-size: 17px;
 }
 
 .navbar a:hover {
     background-color: #ddd;
-    color: black;
+    color: white;
 }
 
 .navbar img {
-    height: 50px;
-    margin-right: 20px;
+    height: 22px;
+    vertical-align: middle;
+}
+
+.navbar-brand {
+    width: 100%;
+    text-align: left;
+    display: flex;
+    align-items: flex-start; /* alignment to the top */
+}
+
+.navbar-logo {
+    width: 100%;
+    text-align: right;
+    display: flex;
+    align-items: flex-start; /* alignment to the top */
 }
 
 body {
     margin: 0px;
+    color:white;
 }
 
-.gradient-background {
+.background {
+    background-color: #0A0E17;
+}
 
-  width: 100%;
-  height: 100%;
-  background-color: #0093E9;
-  background-image: linear-gradient(330deg, #0093E9 0%, #80D0C7 38%, #ffffff 72%);
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  background-attachment: fixed;
-  z-index: -2;
+.navbar .navbar-logo img {
+    height: 22px; /* adjust as necessary */
+}
+
+.my-checklist .Checklist-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
 }
