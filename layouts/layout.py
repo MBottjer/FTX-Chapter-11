@@ -14,13 +14,13 @@ def create_layout(visualizations):
                                 href="#"),
                     className="mr-auto"
                 ),
-                dbc.NavItem(dbc.NavLink("Venture Portfolio", href="/new-page", style={"max-width": "160px",
-                                                                                      "text-overflow": "ellipsis",
-                                                                                      "white-space": "nowrap",
-                                                                                      "overflow": "hidden",
-                                                                                      "margin-right": "20px",
-                                                                                      "vertical-align": "middle"}),
-                            style={"margin-top": "5px"}),
+                # dbc.NavItem(dbc.NavLink("Venture Portfolio", href="/new-page", style={"max-width": "160px",
+                #                                                                       "text-overflow": "ellipsis",
+                #                                                                       "white-space": "nowrap",
+                #                                                                       "overflow": "hidden",
+                #                                                                       "margin-right": "20px",
+                #                                                                       "vertical-align": "middle"}),
+                #             style={"margin-top": "5px"}),
                 dbc.NavLink(
                     html.Img(src='/assets/arceau.svg', className="align-self-center ml-auto", style={"height": "14px"}),
                     href="https://www.arceau.com/",
@@ -54,6 +54,12 @@ def create_layout(visualizations):
                     html.Li("Alameda has over $2B in liquid assets and a significant portion of the venture book."),
                 ]),
                 dbc.Row(silo_cols),
+                html.Br(),
+                html.H3([html.P("Venture Assets")]),
+                html.P("We believe FTX invested $5.1B into venture and funds across the WRS, Alameda and Dotcom silos. "
+                       "Of that, we have marked the value of these investments down to $1.7B. Below is a summary:"),
+                html.Br(),
+                html.Div(visualizations["ventures_table"]),
                 html.Br(),
                 html.H3([html.P("Exchange Recoveries ($ in mm)")]),
                 html.Div([
