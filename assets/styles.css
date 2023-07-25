@@ -61,3 +61,7 @@ body {
     gap: 10px;
     margin-bottom: 10px;
 }
+
+ul li::marker{
+    color: rgb(62, 199, 227);
+}
