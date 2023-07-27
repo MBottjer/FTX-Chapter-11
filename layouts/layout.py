@@ -56,26 +56,44 @@ def create_layout(visualizations):
                 dbc.Row(silo_cols),
                 html.Br(),
                 html.H3([html.P("Venture Assets")]),
-                html.P("We believe FTX invested $5.1B into venture and funds across the WRS, Alameda and Dotcom silos. "
-                       "Of that, we have marked the value of these investments down to $1.7B. Below is a summary:"),
+                html.P("We think FTX invested ~$5.1B into venture assets and funds across WRS, Alameda and Dotcom. "
+                       "We have marked the value of these investments down to $1.7B. Below is a summary:"),
                 html.Br(),
                 html.Div(visualizations["ventures_table"]),
                 html.Br(),
                 html.H3([html.P("Exchange Recoveries ($ in mm)")]),
+                html.Br(),
+                html.P("Initially presented is the reported state of assets and liabilities for each exchange. "
+                       "To understand potential recoveries, toggle the options under Recovery Toggles. "),
+                html.Ul([
+                    html.Li("Receive Claims Against Alameda: assumes that FTX.COM receives its recoverable "
+                            "value from Alameda as does FTX.US"),
+                    html.Li("Subcon: Alameda + Dotcom + Ventures: representative of substantive consolidation across"
+                            " the three silos, combining their assets and liabiltiies"),
+                    html.Li("Subcon: WRS: collapses the WRS silo, making the cash available in the topco available to "
+                            "the exchange"),
+                    html.Li("Subordinate Sam Coins: reflects the estate's distinction between Category A "
+                            "assets and Categroy B Assets which includes  FTT, MAPS, SRM, FIDA, MEDIA, OXY, "
+                            "All Other - Category B, and assigns a value of 0 to these assets in both assets and "
+                            "liabilities."),
+                ]),
+                html.Br(),
                 html.Div([
                     html.Div([exchange_cols[0], exchange_cols[1]], style={'width': '1100px'}),
-                    html.Div(
+                    html.Div([
+                        html.P("Recovery Toggles:"),
                         dcc.Checklist(
                             id='exchange-overview-checkbox',
                             options=[
-                                {'label': 'Subordinate Sam Coins', 'value': 'ZERO_SAM'},
+                                {'label': 'Receive Claims Against Alameda', 'value': 'CLAIM_ALAMEDA'},
                                 {'label': 'Subcon: Alameda + Dotcom + Ventures', 'value': 'SUBCON'},
                                 {'label': 'Subcon: WRS', 'value': 'SUBCON_US'},
+                                {'label': 'Subordinate Sam Coins', 'value': 'ZERO_SAM'},
                             ],
                             value=[],
                             className="my-checklist",  # Add this
                         )
-                    ),
+                    ]),
                 ], style={'display': 'flex', 'overflow': 'auto'}),  # use flex display and allow horizontal scrolling
             ], style={'padding': '10px'}),
         ]),

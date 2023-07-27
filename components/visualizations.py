@@ -2,27 +2,22 @@ import pandas as pd
 import plotly.graph_objects as go
 from dash import dcc, dash_table
 from dash import html
+import plotly.express as px
 
-CATEGORY_A_ASSETS_INTL = ["Cash / Stablecoin", "BTC", "ETH", "SOL", "XRP", "BNB", "MATIC", "TRX", "All Other - Category A"]
-CATEGORY_A_ASSETS_US = ["Cash / Stablecoin", "BTC", "ETH", "SOL", "DOGE", "MATIC", "LINK", "SHIB", "TRX", "UNI", "ALGO", "PAXG", "ETHW", "WBTC", "WETH", "All Other - Category A"]
-CATEGORY_B_ASSETS = ["FTT", "MAPS", "SRM", "FIDA", "MEDIA", "All Other - Category B"]
+CATEGORY_B_ASSETS = ["FTT", "MAPS", "SRM", "FIDA", "MEDIA", "OXY", "All Other - Category B"]
 ASSET_VALUE_COL = "Located Assets"
 
 def create_exchange_dict(crypto_df: pd.DataFrame, related_party_df: pd.DataFrame) -> dict:
-    # Extract the column name dynamically. Assume that the required column is the last one.
-
-    # Identify Category A and B assets. Assume they are marked by "- Category A" and "- Category B" in index.
-    category_a_assets = crypto_df.index[crypto_df.index.str.contains('- Category A')]
-    category_b_assets = crypto_df.index[crypto_df.index.str.contains('- Category B')]
-
+    relevant_cols = ["Cash / Stablecoin", "Crypto - Category A", "Crypto - Category B"]
     assets_dict = {
-        asset: crypto_df.loc[asset, ASSET_VALUE_COL] for asset in crypto_df.index
+        # asset: crypto_df.loc[asset, ASSET_VALUE_COL] for asset in crypto_df.index
+        asset: crypto_df.loc[asset, ASSET_VALUE_COL] for asset in relevant_cols
     }
     assets_dict["Receivables"] = related_party_df["Estimated Receivables"].sum()
 
     # Create the dictionary for liabilities
     liabilities_dict = {
-        liability: crypto_df.loc[liability, "Customer Payables"] for liability in crypto_df.index
+        liability: crypto_df.loc[liability, "Customer Payables"] for liability in relevant_cols
     }
     liabilities_dict["Related Party Payables"] = related_party_df["Estimated Payables"].sum()
 
@@ -86,33 +81,38 @@ def create_silo_graphs(assets_df: pd.DataFrame, liabilities_df: pd.DataFrame):
         silo_graphs.append(html.Div(silo_graph, className="four columns", style={'margin-top': '10px'}))
     return silo_graphs
 
+
 def create_exchange_graph(asset_df, related_party_df, exchange=""):
     if exchange == "US":
         exchange_name, exchange_id = "FTX.US", "ftx_us"
-        # exchange = create_us_exchange_dict(asset_df, related_party_df)
     else:
         exchange_name, exchange_id = "FTX.COM", "ftx_dotcom"
-        # exchange = create_dotcom_dict(asset_df, related_party_df)
     exchange = create_exchange_dict(asset_df, related_party_df)
 
-    # Create a new figure for the exchange
+    unique_labels = set(exchange['assets'].keys()).union(set(exchange['liabilities'].keys()))
+    colors = px.colors.qualitative.D3
+    label_color_map = {label: colors[i % len(colors)] for i, label in enumerate(unique_labels)}
+
     fig = go.Figure()
+    trace_indices = {}
 
-    # Loop over asset and liability categories
     for category in ['assets', 'liabilities']:
-        # Loop over the items in the category
         for item, value in exchange[category].items():
-            # Add a bar to the figure for the item
-            fig.add_trace(
-                go.Bar(
-                    name=item,
-                    x=[category],
-                    y=[value],
-                    hovertemplate='<b>%{fullData.name}</b><br><i>Amount</i>: %{y}<extra></extra>',
+            if item not in trace_indices:
+                fig.add_trace(
+                    go.Bar(
+                        name=item,
+                        x=(category,),
+                        y=(value,),
+                        hovertemplate='<b>%{fullData.name}</b><br><i>Amount</i>: %{y}<extra></extra>',
+                        marker_color=label_color_map[item],
+                    )
                 )
-            )
+                trace_indices[item] = len(fig.data) - 1  # store the trace index
+            else:
+                fig.data[trace_indices[item]].x += (category,)
+                fig.data[trace_indices[item]].y += (value,)
 
-    # Update the layout to stack the bars and add a title
     fig.update_layout(
         barmode='stack',
         title=f'{exchange_name}',
@@ -120,19 +120,8 @@ def create_exchange_graph(asset_df, related_party_df, exchange=""):
         autosize=False,
         width=500,
         height=500,
-        margin=dict(
-            l=20,  # left margin
-            r=200,  # right margin: increase this to create more space for the legend
-            b=100,  # bottom margin
-            t=100,  # top margin
-            pad=10
-        ),
-        legend=dict(x=1.2, y=0.5)
-    )
-
-    # Add the graph to the list of exchange graphs
-    # exchange_graph = dcc.Graph(id=f'{exchange_id}_exchange_overview_graph', figure=fig)
-    fig.update_layout(
+        margin=dict(l=20, r=200, b=100, t=100, pad=10),
+        legend=dict(x=1.2, y=0.5),
         plot_bgcolor='rgb(29, 31, 43)',
         paper_bgcolor='rgb(29, 31, 43)',
         font_color='white',

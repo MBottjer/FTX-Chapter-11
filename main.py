@@ -1,4 +1,4 @@
-from dash import dash, Output, Input, exceptions, dcc, html
+from dash import dash, Output, Input, exceptions, dcc, html, State
 from data_processing.data import load_data
 from components.visualizations import create_visualizations, create_exchange_graph, calculate_recovery_rate
 from layouts.layout import create_layout
@@ -12,12 +12,13 @@ app = dash.Dash(__name__, external_stylesheets=['https://fonts.googleapis.com/cs
 app.layout = html.Div([
     dcc.Store(id='data-store', data=dataframes_json), # Store data in dcc.Store
     dcc.Store(id='recovery-rate-store', data={}),
+    dcc.Store(id='hidden-div-checkboxes', storage_type='session'),
     create_layout(visualizations)  # Call your create_visualizations function here
 ])
 # app.config.suppress_callback_exceptions = True
 
 def zero_out_sam_coins(data):
-    sam_coins = ["FTT", "MAPS", "SRM", "FIDA", "MEDIA", "All Other - Category B"]
+    sam_coins = ["Crypto - Category B"]
 
     for key in data:
         if 'index' in data[key] and 'data' in data[key]:
@@ -64,18 +65,23 @@ def add_alameda_crypto_assets(data):
     cash_stablecoin_data_index = data['ftx_intl_crypto_df']['columns'].index('Located Assets')
     data['ftx_intl_crypto_df']['data'][cash_stablecoin_index][cash_stablecoin_data_index] += values_alameda[0]
 
-    # Add the selected indices and values to ftx_international_crypto_df
-    for i in range(len(indices_alameda)):
-        index_alameda = data['alameda_df']['index'][indices_alameda[i]]
-        if index_alameda in data['ftx_intl_crypto_df']['index']:
-            # If index exists, add the value to the corresponding row
-            index_ftx = data['ftx_intl_crypto_df']['index'].index(index_alameda)
-            data['ftx_intl_crypto_df']['data'][index_ftx][cash_stablecoin_data_index] += values_alameda[i]
-        else:
-            # If index does not exist, add a new row with the value
-            data['ftx_intl_crypto_df']['index'].append(index_alameda)
-            data['ftx_intl_crypto_df']['data'].append([0, values_alameda[i], 0, 0, 0])
+    # Add crypto assets value from alameda_df to 'Crypto - Category A' in ftx_international_crypto_df
+    cash_stablecoin_index = data['ftx_intl_crypto_df']['index'].index('Crypto - Category A')
+    cash_stablecoin_data_index = data['ftx_intl_crypto_df']['columns'].index('Located Assets')
+    for value in values_alameda[1:]:
+        data['ftx_intl_crypto_df']['data'][cash_stablecoin_index][cash_stablecoin_data_index] += value
 
+    # Add the selected indices and values to ftx_international_crypto_df
+    # for i in range(len(indices_alameda)):
+    #     index_alameda = data['alameda_df']['index'][indices_alameda[i]]
+    #     if index_alameda in data['ftx_intl_crypto_df']['index']:
+    #         # If index exists, add the value to the corresponding row
+    #         index_ftx = data['ftx_intl_crypto_df']['index'].index(index_alameda)
+    #         data['ftx_intl_crypto_df']['data'][index_ftx][cash_stablecoin_data_index] += values_alameda[i]
+    #     else:
+    #         # If index does not exist, add a new row with the value
+    #         data['ftx_intl_crypto_df']['index'].append(index_alameda)
+    #         data['ftx_intl_crypto_df']['data'].append([0, values_alameda[i], 0, 0, 0])
     return data
 
 def subcon_non_crypto(data, exchange, indices):
@@ -169,21 +175,46 @@ def create_exchange_figs(new_data):
     }
     return ftx_dotcom_exchange_fig, ftx_us_exchange_fig, recovery_rates
 
+
+# Callback to manage checkbox selections
+@app.callback(
+    Output('exchange-overview-checkbox', 'value'),
+    Output('hidden-div-checkboxes', 'data'),
+    [Input('exchange-overview-checkbox', 'value')],
+    [State('hidden-div-checkboxes', 'data')]
+)
+def update_checkboxes(new_values, old_values):
+    # Detect whether a value has just been added
+    added_values = list(set(new_values) - set(old_values if old_values else []))
+
+    # If CLAIM_ALAMEDA is just selected, uncheck SUBCON and SUBCON_US
+    if 'CLAIM_ALAMEDA' in added_values and ('SUBCON' in new_values or 'SUBCON_US' in new_values):
+        new_values = [value for value in new_values if value not in ['SUBCON', 'SUBCON_US']]
+
+    # If either SUBCON or SUBCON_US is just selected, uncheck CLAIM_ALAMEDA
+    if ('SUBCON' in added_values or 'SUBCON_US' in added_values) and 'CLAIM_ALAMEDA' in new_values:
+        new_values.remove('CLAIM_ALAMEDA')
+
+    return new_values, new_values
+
+
 @app.callback(
     Output('ftx_dotcom_exchange_overview_graph', 'figure'),
     Output('ftx_us_exchange_overview_graph', 'figure'),
     Output('recovery-rate-store', 'data'),
-    Input('exchange-overview-checkbox', 'value'),
-    Input('data-store', 'data')
+    [Input('exchange-overview-checkbox', 'value')],
+    [Input('data-store', 'data')]
 )
 def update_exchange_graphs(selected_items, data):
     data_adj = data.copy()
+
     if 'ZERO_SAM' in selected_items:
         data_adj = zero_out_sam_coins(data_adj)
     if 'SUBCON' in selected_items:
         data_adj = subcon_alameda_dotcom_ventures(data_adj)
     if 'SUBCON_US' in selected_items:
         data_adj = subcon_wrs(data_adj)
+
     return create_exchange_figs(data_adj)
 
 @app.callback(
@@ -199,6 +230,7 @@ def update_recovery_rates(data):
     ftx_us_recovery_rate = data.get('ftx_us', "N/A")
 
     return f"Recovery Rate: {ftx_intl_recovery_rate:.2f}%", f"Recovery Rate: {ftx_us_recovery_rate:.2f}%"
+
 
 if __name__ == '__main__':
     app.run_server(debug=True)
