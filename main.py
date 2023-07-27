@@ -1,6 +1,7 @@
 from dash import dash, Output, Input, exceptions, dcc, html, State
 from data_processing.data import load_data
-from components.visualizations import create_visualizations, create_exchange_graph, calculate_recovery_rate
+from components.visualizations import create_visualizations, create_exchange_graph, calculate_recovery_rate, \
+    create_exchange_crypto_pie_chart, CATEGORY_B_ASSETS
 from layouts.layout import create_layout
 import pandas as pd
 
@@ -18,7 +19,7 @@ app.layout = html.Div([
 # app.config.suppress_callback_exceptions = True
 
 def zero_out_sam_coins(data):
-    sam_coins = ["Crypto - Category B"]
+    sam_coins = ["Crypto - Category B"] + CATEGORY_B_ASSETS
 
     for key in data:
         if 'index' in data[key] and 'data' in data[key]:
@@ -72,16 +73,16 @@ def add_alameda_crypto_assets(data, recovery_rate=1.0):
         data['ftx_intl_crypto_df']['data'][cash_stablecoin_index][cash_stablecoin_data_index] += round(value*recovery_rate)
 
     # Add the selected indices and values to ftx_international_crypto_df
-    # for i in range(len(indices_alameda)):
-    #     index_alameda = data['alameda_df']['index'][indices_alameda[i]]
-    #     if index_alameda in data['ftx_intl_crypto_df']['index']:
-    #         # If index exists, add the value to the corresponding row
-    #         index_ftx = data['ftx_intl_crypto_df']['index'].index(index_alameda)
-    #         data['ftx_intl_crypto_df']['data'][index_ftx][cash_stablecoin_data_index] += values_alameda[i]
-    #     else:
-    #         # If index does not exist, add a new row with the value
-    #         data['ftx_intl_crypto_df']['index'].append(index_alameda)
-    #         data['ftx_intl_crypto_df']['data'].append([0, values_alameda[i], 0, 0, 0])
+    for i in range(len(indices_alameda)):
+        index_alameda = data['alameda_df']['index'][indices_alameda[i]]
+        if index_alameda in data['ftx_intl_crypto_df']['index']:
+            # If index exists, add the value to the corresponding row
+            index_ftx = data['ftx_intl_crypto_df']['index'].index(index_alameda)
+            data['ftx_intl_crypto_df']['data'][index_ftx][cash_stablecoin_data_index] += values_alameda[i]
+        else:
+            # If index does not exist, add a new row with the value
+            data['ftx_intl_crypto_df']['index'].append(index_alameda)
+            data['ftx_intl_crypto_df']['data'].append([0, values_alameda[i], 0, 0, 0])
     return data
 
 def subcon_non_crypto(data, silos, exchange, indices, recovery_rate=1.0):
@@ -205,6 +206,7 @@ def create_exchange_figs(new_data):
                                            index=new_data["ftx_international_related_party_df"]["index"],
                                            columns=new_data["ftx_international_related_party_df"]["columns"])
     ftx_dotcom_exchange_fig = create_exchange_graph(dotcom_crypto_df, dotcom_related_party_df)
+
     us_crypto_df = pd.DataFrame(data=new_data["ftx_us_crypto_df"]["data"],
                                 index=new_data["ftx_us_crypto_df"]["index"],
                                 columns=new_data["ftx_us_crypto_df"]["columns"])
@@ -212,13 +214,17 @@ def create_exchange_figs(new_data):
                                        index=new_data["ftx_us_related_party_df"]["index"],
                                        columns=new_data["ftx_us_related_party_df"]["columns"])
     ftx_us_exchange_fig = create_exchange_graph(us_crypto_df, us_related_party_df, "US")
+
+    ftx_intl_crypto_pie_chart = create_exchange_crypto_pie_chart(dotcom_crypto_df, "FTX.COM - Cash & Crypto")
+    ftx_us_crypto_pie_chart = create_exchange_crypto_pie_chart(us_crypto_df, "FTX.US - Cash & Crypto")
+
     ftx_intl_recovery_rate = calculate_recovery_rate(dotcom_crypto_df, dotcom_related_party_df)
     ftx_us_recovery_rate = calculate_recovery_rate(us_crypto_df, us_related_party_df)
     recovery_rates = {
         'ftx_intl': ftx_intl_recovery_rate,
         'ftx_us': ftx_us_recovery_rate,
     }
-    return ftx_dotcom_exchange_fig, ftx_us_exchange_fig, recovery_rates
+    return ftx_dotcom_exchange_fig, ftx_us_exchange_fig, ftx_intl_crypto_pie_chart, ftx_us_crypto_pie_chart, recovery_rates
 
 
 # Callback to manage checkbox selections
@@ -246,6 +252,8 @@ def update_checkboxes(new_values, old_values):
 @app.callback(
     Output('ftx_dotcom_exchange_overview_graph', 'figure'),
     Output('ftx_us_exchange_overview_graph', 'figure'),
+    Output('ftx_intl_pie_chart', 'figure'),
+    Output('ftx_us_pie_chart', 'figure'),
     Output('recovery-rate-store', 'data'),
     [Input('exchange-overview-checkbox', 'value')],
     [Input('data-store', 'data')]
@@ -288,10 +296,6 @@ def update_recovery_rates(data, selected_items):
         ftx_us_recovery_rate = str(round(min(float(rate), 100))) if rate != "N/A" else "N/A"
 
     return f"Recovery Rate: {ftx_intl_recovery_rate}%", f"Recovery Rate: {ftx_us_recovery_rate}%"
-
-
-
-
 
 
 if __name__ == '__main__':

@@ -211,7 +211,8 @@ def create_ventures_table(ventures_df: pd.DataFrame):
 
 def create_exchange_crypto_pie_chart(crypto_df: pd.DataFrame, exchange_name):
     filtered_df = crypto_df.loc[
-        ~crypto_df.index.isin(['Crypto - Category A', 'Crypto - Category B'])
+        ~crypto_df.index.isin(['Crypto - Category A', 'Crypto - Category B', 'Liquid Securities', 'Venture Investments',
+                                'Property', 'Related Party Receivables', 'Clawbacks', 'Subsidiary Sales'])
         & (crypto_df['Located Assets'] > 0)
         ]
     fig = px.pie(filtered_df, values='Located Assets', names=filtered_df.index, title='Crypto Holdings')
