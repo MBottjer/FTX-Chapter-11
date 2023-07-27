@@ -8,16 +8,19 @@ CATEGORY_B_ASSETS = ["FTT", "MAPS", "SRM", "FIDA", "MEDIA", "OXY", "All Other - 
 ASSET_VALUE_COL = "Located Assets"
 
 def create_exchange_dict(crypto_df: pd.DataFrame, related_party_df: pd.DataFrame) -> dict:
-    relevant_cols = ["Cash / Stablecoin", "Crypto - Category A", "Crypto - Category B"]
+    relevant_cols = ["Cash / Stablecoin", "Crypto - Category A", "Crypto - Category B", "Venture Investments", "Liquid Securities", "Clawbacks"]
     assets_dict = {
-        # asset: crypto_df.loc[asset, ASSET_VALUE_COL] for asset in crypto_df.index
-        asset: crypto_df.loc[asset, ASSET_VALUE_COL] for asset in relevant_cols
+        asset: crypto_df.loc[asset, ASSET_VALUE_COL]
+        for asset in relevant_cols
+        if asset in crypto_df.index
     }
     assets_dict["Receivables"] = related_party_df["Estimated Receivables"].sum()
 
     # Create the dictionary for liabilities
     liabilities_dict = {
-        liability: crypto_df.loc[liability, "Customer Payables"] for liability in relevant_cols
+        liability: crypto_df.loc[liability, "Customer Payables"]
+        for liability in relevant_cols
+        if liability in crypto_df.index
     }
     liabilities_dict["Related Party Payables"] = related_party_df["Estimated Payables"].sum()
 
@@ -81,7 +84,6 @@ def create_silo_graphs(assets_df: pd.DataFrame, liabilities_df: pd.DataFrame):
         silo_graphs.append(html.Div(silo_graph, className="four columns", style={'margin-top': '10px'}))
     return silo_graphs
 
-
 def create_exchange_graph(asset_df, related_party_df, exchange=""):
     if exchange == "US":
         exchange_name, exchange_id = "FTX.US", "ftx_us"
@@ -98,6 +100,8 @@ def create_exchange_graph(asset_df, related_party_df, exchange=""):
 
     for category in ['assets', 'liabilities']:
         for item, value in exchange[category].items():
+            if value == 0:  # Skip if value is zero
+                continue
             if item not in trace_indices:
                 fig.add_trace(
                     go.Bar(
@@ -127,6 +131,7 @@ def create_exchange_graph(asset_df, related_party_df, exchange=""):
         font_color='white',
     )
     return fig.to_dict()
+
 
 def calculate_recovery_rate(asset_df, related_party_df):
     # Calculate the recovery rate
@@ -204,6 +209,26 @@ def create_ventures_table(ventures_df: pd.DataFrame):
 
     return table_container
 
+def create_exchange_crypto_pie_chart(crypto_df: pd.DataFrame, exchange_name):
+    filtered_df = crypto_df.loc[
+        ~crypto_df.index.isin(['Crypto - Category A', 'Crypto - Category B'])
+        & (crypto_df['Located Assets'] > 0)
+        ]
+    fig = px.pie(filtered_df, values='Located Assets', names=filtered_df.index, title='Crypto Holdings')
+    fig.update_layout(
+        title=f'{exchange_name}',
+        legend_title="Cash & Crypto",
+        autosize=False,
+        width=500,
+        height=500,
+        margin=dict(l=20, r=200, b=100, t=100, pad=10),
+        legend=dict(x=1.2, y=0.5),
+        plot_bgcolor='rgb(29, 31, 43)',
+        paper_bgcolor='rgb(29, 31, 43)',
+        font_color='white',
+    )
+    return fig
+
 def create_visualizations(dataframes):
 
     cash_df = dataframes.get("cash_df")
@@ -220,28 +245,39 @@ def create_visualizations(dataframes):
     silo_graphs = create_silo_graphs(assets_df, liabilities_df)
     ftx_intl_fig = create_exchange_graph(ftx_intl_crypto_df, ftx_international_related_party_df)
     ftx_us_fig = create_exchange_graph(ftx_us_crypto_df, ftx_us_related_party_df, "US")
+    ftx_intl_crypto_pie_chart = create_exchange_crypto_pie_chart(ftx_intl_crypto_df, "FTX.COM - Cash & Crypto")
+    ftx_us_crypto_pie_chart = create_exchange_crypto_pie_chart(ftx_us_crypto_df, "FTX.US - Cash & Crypto")
     ventures_table = create_ventures_table(ventures_df)
 
     ftx_intl_recovery_rate = calculate_recovery_rate(ftx_intl_crypto_df, ftx_international_related_party_df)
     ftx_us_recovery_rate = calculate_recovery_rate(ftx_us_crypto_df, ftx_us_related_party_df)
 
     exchange_graphs.append(html.Div([
+        html.H5(f'Recovery Rate: N/A%%', id="ftx_dotcom_recovery_rate", style={"color": "rgb(14, 200, 64)"}),
         dcc.Graph(id='ftx_dotcom_exchange_overview_graph', figure=ftx_intl_fig),
-        html.H5(f'Recovery Rate: {ftx_intl_recovery_rate:.2f}%', id="ftx_dotcom_recovery_rate", style={"color": "rgb(14, 200, 64)"})
         # show recovery rate under the graph
     ], className="four columns", style={'marginRight': '240px'}))  # added width to div
 
     exchange_graphs.append(html.Div([
+        html.H5(f'Recovery Rate: N/A%', id="ftx_us_recovery_rate", style={"color": "rgb(14, 200, 64)"}),
         dcc.Graph(id='ftx_us_exchange_overview_graph', figure=ftx_us_fig),
-        html.H5(f'Recovery Rate: {ftx_us_recovery_rate:.2f}%', id="ftx_us_recovery_rate", style={"color": "rgb(14, 200, 64)"})
         # show recovery rate under the graph
     ], className="four columns"))  # added width to div
+
+    exchange_crypto_pie_charts = []
+    exchange_crypto_pie_charts.append(html.Div([
+        dcc.Graph(id="ftx_intl_pie_chart", figure=ftx_intl_crypto_pie_chart)
+    ], className="four columns", style={'marginRight': '240px'}))
+    exchange_crypto_pie_charts.append(html.Div([
+        dcc.Graph(id="ftx_us_pie_chart", figure=ftx_us_crypto_pie_chart)
+    ], className="four columns"))
 
     visualizations = {
         "cash_graphs": cash_graphs,
         "silo_graphs": silo_graphs,
         "exchange_graphs": exchange_graphs,
         "ventures_table": ventures_table,
+        "exchange_pie_charts": exchange_crypto_pie_charts,
     }
 
     return visualizations

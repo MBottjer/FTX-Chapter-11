@@ -29,7 +29,7 @@ def zero_out_sam_coins(data):
                     data[key]['data'][index] = [0]*len(data[key]['data'][index])
     return data
 
-def add_cash_to_stablecoin(data, exchange, columns, target_column='Located Assets'):
+def add_cash_to_stablecoin(data, exchange, columns, target_column='Located Assets', recovery_rate=1.0):
     cash_df = data["cash_df"]
 
     # Get the indices of the columns
@@ -45,11 +45,11 @@ def add_cash_to_stablecoin(data, exchange, columns, target_column='Located Asset
     target_column_index = data[exchange]['columns'].index(target_column)
 
     # Add total_cash to Cash / Stablecoin values in the 'Located Assets' column in ftx_intl_crypto_df
-    data[exchange]['data'][cash_stablecoin_index][target_column_index] += total_cash
+    data[exchange]['data'][cash_stablecoin_index][target_column_index] += round(total_cash*recovery_rate)
 
     return data
 
-def add_alameda_crypto_assets(data):
+def add_alameda_crypto_assets(data, recovery_rate=1.0):
     # Get the indices of 'Stablecoin', 'BTC', 'SOL & APT', 'All Other - Category A' in alameda_df
     indices_alameda = ['Stablecoin', 'BTC', 'SOL & APT', 'All Other - Category A']
     indices_alameda = [data['alameda_df']['index'].index(x) for x in indices_alameda]
@@ -63,13 +63,13 @@ def add_alameda_crypto_assets(data):
     # Add 'Stablecoin' value from alameda_df to 'Cash / Stablecoin' in ftx_international_crypto_df
     cash_stablecoin_index = data['ftx_intl_crypto_df']['index'].index('Cash / Stablecoin')
     cash_stablecoin_data_index = data['ftx_intl_crypto_df']['columns'].index('Located Assets')
-    data['ftx_intl_crypto_df']['data'][cash_stablecoin_index][cash_stablecoin_data_index] += values_alameda[0]
+    data['ftx_intl_crypto_df']['data'][cash_stablecoin_index][cash_stablecoin_data_index] += round(values_alameda[0]*recovery_rate)
 
     # Add crypto assets value from alameda_df to 'Crypto - Category A' in ftx_international_crypto_df
     cash_stablecoin_index = data['ftx_intl_crypto_df']['index'].index('Crypto - Category A')
     cash_stablecoin_data_index = data['ftx_intl_crypto_df']['columns'].index('Located Assets')
     for value in values_alameda[1:]:
-        data['ftx_intl_crypto_df']['data'][cash_stablecoin_index][cash_stablecoin_data_index] += value
+        data['ftx_intl_crypto_df']['data'][cash_stablecoin_index][cash_stablecoin_data_index] += round(value*recovery_rate)
 
     # Add the selected indices and values to ftx_international_crypto_df
     # for i in range(len(indices_alameda)):
@@ -84,9 +84,9 @@ def add_alameda_crypto_assets(data):
     #         data['ftx_intl_crypto_df']['data'].append([0, values_alameda[i], 0, 0, 0])
     return data
 
-def subcon_non_crypto(data, exchange, indices):
+def subcon_non_crypto(data, silos, exchange, indices, recovery_rate=1.0):
     # Get the indices of 'Alameda' and 'Ventures' in assets_df
-    column_indices_assets = [data['assets_df']['columns'].index(x) for x in ['Alameda', 'Ventures']]
+    column_indices_assets = [data['assets_df']['columns'].index(x) for x in silos]
 
     # For each index, get the values for 'Alameda' and 'Ventures', sum them up,
     # and add to ftx_intl_crypto_df
@@ -98,7 +98,7 @@ def subcon_non_crypto(data, exchange, indices):
         index_values = [data['assets_df']['data'][index_assets][i] for i in column_indices_assets]
 
         # Sum up the values
-        index_values_sum = sum(index_values)
+        index_values_sum = round(sum(index_values)*recovery_rate)
 
         # If the current index exists in ftx_intl_crypto_df, add the sum to it
         # Else, create a new entry for the current index
@@ -121,7 +121,7 @@ def subcon_alameda_dotcom_ventures(data):
 
     # Add Venture investments
     indices = ['Venture Investments', 'Liquid Securities', 'Clawbacks']
-    data = subcon_non_crypto(data, "ftx_intl_crypto_df", indices)
+    data = subcon_non_crypto(data, ['Alameda', 'Ventures'], "ftx_intl_crypto_df", indices)
 
     # Zero 'Estimated Receivables' in ftx_international_related_party_df
     est_receivables_index_in_related_party_df = data['ftx_international_related_party_df']['columns'].index('Estimated Receivables')
@@ -136,6 +136,51 @@ def subcon_alameda_dotcom_ventures(data):
 
     return data
 
+def calc_alameda_recovery(data):
+    alameda_asset_index = data["assets_df"]['columns'].index('Alameda')
+    alameda_liabs_index = data["liabilities_df"]['columns'].index('Alameda')
+    total_alameda_assets = sum(row[alameda_asset_index] for row in data["assets_df"]['data'])
+    total_alameda_liabs = sum(row[alameda_liabs_index] for row in data["liabilities_df"]['data'])
+    alameda_recovery = total_alameda_assets / total_alameda_liabs
+    return alameda_recovery
+
+def claim_alameda(data):
+    alameda_recovery_rate = calc_alameda_recovery(data)
+
+    # Add Cash to FTX International Cash / Stablecoin column
+    data = add_cash_to_stablecoin(data, 'ftx_intl_crypto_df', ["Alameda"], recovery_rate=alameda_recovery_rate)
+
+    # Add Alameda assets to FTX International crypto DF
+    data = add_alameda_crypto_assets(data, alameda_recovery_rate)
+
+    # Add Venture investments
+    indices = ['Venture Investments', 'Liquid Securities', 'Clawbacks']
+    data = subcon_non_crypto(data, ["Alameda"], "ftx_intl_crypto_df", indices, alameda_recovery_rate)
+
+    # Zero 'Estimated Receivables' in ftx_international_related_party_df
+    est_receivables_index_in_related_party_df = data['ftx_international_related_party_df']['columns'].index('Estimated Receivables')
+    for row in data['ftx_international_related_party_df']['data']:
+        row[est_receivables_index_in_related_party_df] = 0
+
+    # Zero 'Estimated Payables' in ftx_international_related_party_df
+    est_payables_index_in_related_party_df = data['ftx_international_related_party_df']['columns'].index(
+        'Estimated Payables')
+    for row in data['ftx_international_related_party_df']['data']:
+        row[est_payables_index_in_related_party_df] = 0
+
+    # Net 'Estimated Payables' in ftx_us_related_party_df
+    est_payables_col_index_us = data['ftx_us_related_party_df']['columns'].index(
+        'Estimated Payables')
+    est_receivables_col_index_us = data['ftx_us_related_party_df']['columns'].index(
+        'Estimated Receivables')
+    est_payables_alameda_index_us = data['ftx_us_related_party_df']['index'].index(
+        'Alameda Research LLC')
+    data['ftx_us_related_party_df']['data'][est_payables_alameda_index_us][est_payables_col_index_us] = data['ftx_us_related_party_df']['data'][est_payables_alameda_index_us][est_payables_col_index_us] - \
+                                                                                                            data['ftx_us_related_party_df']['data'][est_payables_alameda_index_us][est_receivables_col_index_us]
+    data['ftx_us_related_party_df']['data'][est_payables_alameda_index_us][est_receivables_col_index_us] = 0
+
+    return data
+
 def subcon_wrs(data):
 
     # Add Cash to FTX International Cash / Stablecoin column
@@ -143,7 +188,7 @@ def subcon_wrs(data):
 
     # Add Assets
     indices = ['Related Party Receivables', 'Subsidiary Sales']
-    data = subcon_non_crypto(data, "ftx_us_crypto_df", indices)
+    data = subcon_non_crypto(data, ["WRS"], "ftx_us_crypto_df", indices)
 
     # est_payables_index_in_related_party_df = data['ftx_us_related_party_df']['columns'].index(
     #     'Estimated Payables')
@@ -208,6 +253,8 @@ def update_checkboxes(new_values, old_values):
 def update_exchange_graphs(selected_items, data):
     data_adj = data.copy()
 
+    if 'CLAIM_ALAMEDA' in selected_items:
+        data_adj = claim_alameda(data_adj)
     if 'ZERO_SAM' in selected_items:
         data_adj = zero_out_sam_coins(data_adj)
     if 'SUBCON' in selected_items:
@@ -221,15 +268,30 @@ def update_exchange_graphs(selected_items, data):
     Output('ftx_dotcom_recovery_rate', 'children'),
     Output('ftx_us_recovery_rate', 'children'),
     Input('recovery-rate-store', 'data'),
+    State('exchange-overview-checkbox', 'value')  # Get the current state of checkbox
 )
-def update_recovery_rates(data):
-    if not data:  # If no data, return initial state
+def update_recovery_rates(data, selected_items):
+    if not data or data is None or (all(item not in selected_items for item in ['CLAIM_ALAMEDA', 'SUBCON', 'SUBCON_US']) and len(selected_items) <= 1):  # Add condition
         return "Recovery Rate: N/A%", "Recovery Rate: N/A%"
 
-    ftx_intl_recovery_rate = data.get('ftx_intl', "N/A")
-    ftx_us_recovery_rate = data.get('ftx_us', "N/A")
+    ftx_intl_recovery_rate = "N/A"
+    ftx_us_recovery_rate = "N/A"
 
-    return f"Recovery Rate: {ftx_intl_recovery_rate:.2f}%", f"Recovery Rate: {ftx_us_recovery_rate:.2f}%"
+    if 'SUBCON' in selected_items or 'CLAIM_ALAMEDA' in selected_items:
+        rate = data.get('ftx_intl', "N/A")
+        ftx_intl_recovery_rate = str(round(float(rate))) if rate != "N/A" else "N/A"
+        rate = data.get('ftx_us', "N/A")
+        ftx_us_recovery_rate = str(round(min(float(rate), 100))) if rate != "N/A" else "N/A"
+
+    if 'SUBCON_US' in selected_items:
+        rate = data.get('ftx_us', "N/A")
+        ftx_us_recovery_rate = str(round(min(float(rate), 100))) if rate != "N/A" else "N/A"
+
+    return f"Recovery Rate: {ftx_intl_recovery_rate}%", f"Recovery Rate: {ftx_us_recovery_rate}%"
+
+
+
+
 
 
 if __name__ == '__main__':

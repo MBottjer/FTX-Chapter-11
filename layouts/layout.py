@@ -5,6 +5,7 @@ import dash_bootstrap_components as dbc
 def create_layout(visualizations):
     silo_cols = [dbc.Col(graph) for graph in visualizations.get("silo_graphs")]
     exchange_cols = [dbc.Col(graph) for graph in visualizations.get("exchange_graphs")]
+    exchange_pie_chart_cols = [dbc.Col(graph) for graph in visualizations.get("exchange_pie_charts")]
 
     layout = html.Div(className='background', children=[
         html.Div([
@@ -95,6 +96,7 @@ def create_layout(visualizations):
                         )
                     ]),
                 ], style={'display': 'flex', 'overflow': 'auto'}),  # use flex display and allow horizontal scrolling
+                dbc.Row(html.Div([exchange_pie_chart_cols[0], exchange_pie_chart_cols[1]], style={'width': '1100px', 'marginTop': '10px'}),)
             ], style={'padding': '10px'}),
         ]),
     ], style={'fontFamily': 'Inter', 'padding': '0px'})
