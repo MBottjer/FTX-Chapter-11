@@ -10,6 +10,7 @@ dataframes_json = {k: v.to_dict(orient='split') for k, v in dataframes.items()} 
 visualizations = create_visualizations(dataframes)
 
 app = dash.Dash(__name__, external_stylesheets=['https://fonts.googleapis.com/css2?family=Inter&display=swap', 'https://codepen.io/chriddyp/pen/bWLwgP.css'])
+server = app.server
 app.layout = html.Div([
     dcc.Store(id='data-store', data=dataframes_json), # Store data in dcc.Store
     dcc.Store(id='recovery-rate-store', data={}),
@@ -300,4 +301,3 @@ def update_recovery_rates(data, selected_items):
 
 if __name__ == '__main__':
     app.run_server(debug=True)
-    server = app.server
