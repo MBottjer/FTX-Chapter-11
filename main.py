@@ -300,3 +300,4 @@ def update_recovery_rates(data, selected_items):
 
 if __name__ == '__main__':
     app.run_server(debug=True)
+    server = app.server
