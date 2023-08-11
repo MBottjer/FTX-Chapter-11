@@ -46,7 +46,11 @@ def create_layout(visualizations):
                 html.Br(),
                 html.H3([html.P("FTX Assets - Silo Overview ($ in mm)")]),
                 html.P("Below, we look at the assets and liabilities of all four silos. We use prices as of 11/11/2022 "
-                       "9am PST. Key takeaways include:"),
+                       "9am PST. Category A Crypto Assets are tokens with (i) a market capitalization of at least $15M "
+                       "and (ii) an average daily trading volume of at least $1M during the past 30 days, in each case "
+                       "measured at February 2, 2023. Category B Assets are tokens that do not satisfy the test for "
+                       "Category A Assets or which are largely held and/or controlled by the estate. Key takeaways "
+                       "include:"),
                 html.Ul([
                     html.Li("FTX's assets are predominantly dominated by a claim against Alameda Ltd. and secondly by "
                             "Category B crypto assets which include: SRM, MAPS, OXY etc."),
@@ -67,16 +71,14 @@ def create_layout(visualizations):
                 html.P("Initially presented is the reported state of assets and liabilities for each exchange. "
                        "To understand potential recoveries, toggle the options under Recovery Toggles. "),
                 html.Ul([
-                    html.Li("Receive Claims Against Alameda: assumes that FTX.COM receives its recoverable "
-                            "value from Alameda as does FTX.US"),
+                    # html.Li("Receive Claims Against Alameda: assumes that FTX.COM receives its recoverable "
+                    #         "value from Alameda as does FTX.US"),
                     html.Li("Subcon: Alameda + Dotcom + Ventures: representative of substantive consolidation across"
                             " the three silos, combining their assets and liabiltiies"),
                     html.Li("Subcon: WRS: collapses the WRS silo, making the cash available in the topco available to "
                             "the exchange"),
-                    html.Li("Subordinate Sam Coins: reflects the estate's distinction between Category A "
-                            "assets and Categroy B Assets which includes  FTT, MAPS, SRM, FIDA, MEDIA, OXY, "
-                            "All Other - Category B, and assigns a value of 0 to these assets in both assets and "
-                            "liabilities."),
+                    html.Li("Subordinate Sam Coins: assigns a value of 0 to crypto assets and liabilities deemed "
+                            "Category B."),
                 ]),
                 html.Br(),
                 html.Div([
@@ -86,15 +88,26 @@ def create_layout(visualizations):
                         dcc.Checklist(
                             id='exchange-overview-checkbox',
                             options=[
-                                {'label': 'Receive Claims Against Alameda', 'value': 'CLAIM_ALAMEDA'},
+                                # {'label': 'Receive Claims Against Alameda', 'value': 'CLAIM_ALAMEDA'},
                                 {'label': 'Subcon: Alameda + Dotcom + Ventures', 'value': 'SUBCON'},
                                 {'label': 'Subcon: WRS', 'value': 'SUBCON_US'},
                                 {'label': 'Subordinate Sam Coins', 'value': 'ZERO_SAM'},
                             ],
                             value=[],
                             className="my-checklist",  # Add this
-                        )
-                    ]),
+                        ),
+                        html.Br(),
+                        html.P("Latest Prices Toggles:"),
+                        dcc.Checklist(
+                            id='exchange-overview-checkbox-pricing',
+                            options=[
+                                {'label': "Crypto - Category A (Not Including 'All Other - Category A')", 'value': 'CATEGORY_A_UPDATE'},
+                                {'label': 'Liquid Securities', 'value': 'LIQUID_SEC_UPDATE'},
+                            ],
+                            value=[],
+                            className="my-checklist",  # Add this
+                        ),
+                    ], style={'marginTop': '45px', 'marginLeft': '30px'}),
                 ], style={'display': 'flex', 'overflow': 'auto'}),  # use flex display and allow horizontal scrolling
                 dbc.Row(html.Div([exchange_pie_chart_cols[0], exchange_pie_chart_cols[1]], style={'width': '1100px', 'marginTop': '10px'}),)
             ], style={'padding': '10px'}),

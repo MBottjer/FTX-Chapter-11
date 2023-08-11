@@ -1,5 +1,5 @@
 from dash import dash, Output, Input, exceptions, dcc, html, State
-from data_processing.data import load_data
+from data_processing.data import load_data, get_close_price
 from components.visualizations import create_visualizations, create_exchange_graph, calculate_recovery_rate, \
     create_exchange_crypto_pie_chart, CATEGORY_B_ASSETS
 from layouts.layout import create_layout
@@ -53,7 +53,7 @@ def add_cash_to_stablecoin(data, exchange, columns, target_column='Located Asset
 
 def add_alameda_crypto_assets(data, recovery_rate=1.0):
     # Get the indices of 'Stablecoin', 'BTC', 'SOL & APT', 'All Other - Category A' in alameda_df
-    indices_alameda = ['Stablecoin', 'BTC', 'SOL & APT', 'All Other - Category A']
+    indices_alameda = ['Stablecoin', 'BTC', 'SOL', 'APT', 'All Other - Category A']
     indices_alameda = [data['alameda_df']['index'].index(x) for x in indices_alameda]
 
     # Get the index of 'Located Assets' in alameda_df
@@ -199,6 +199,53 @@ def subcon_wrs(data):
 
     return data
 
+
+def adjust_category_a(df):
+    sum_indices = ['BTC', 'ETH', 'SOL', 'XRP', 'BNB', 'MATIC', 'TRX', 'All Other - Category A',
+               'DOGE', 'LINK', 'SHIB', 'UNI', 'ALGO', 'PAXG', 'ETHW', 'WETH', 'APT']
+    total_assets = 0
+    for idx in sum_indices:
+        try:
+            index_pos = df['index'].index(idx)
+            total_assets += df['data'][index_pos][1]  # Add the 'Located Assets' value
+        except ValueError:
+            continue  # Skip if the index doesn't exist in the dataframe
+
+    try:
+        category_a_idx = df['index'].index('Crypto - Category A')
+        df['data'][category_a_idx][1] = total_assets  # Update the 'Located Assets' value for 'Crypto - Category A'
+    except ValueError:
+        print("Index 'Crypto - Category A' not found!")
+
+def update_prices(df_as_dict, ticker, close_price):
+    # Find the index of the current ticker in the dataframe's 'index' list
+    try:
+        ticker_idx = df_as_dict['index'].index(ticker)
+    except ValueError:
+        print(f"Ticker {ticker} not found!")
+        return
+
+    # Calculate the "Located Assets" value
+    quantity = df_as_dict['data'][ticker_idx][6]  # The "Quantity" column is at index 6
+    located_assets = round((close_price * quantity)/1000000.0)
+
+    # Update the "Located Assets" column in the dictionary for the current ticker
+    df_as_dict['data'][ticker_idx][1] = located_assets
+
+def inject_last_close_crypto_prices(data):
+    category_a_crypto = ['BTC', 'ETH', 'SOL', 'XRP', 'BNB', 'MATIC', 'TRX', 'DOGE', 'APT']
+    for ticker in category_a_crypto:
+        # Get the close price for the current ticker
+        close_price = get_close_price(ticker, '1d')
+
+        # Update prices in both dataframes
+        update_prices(data["ftx_intl_crypto_df"], ticker, close_price)
+        update_prices(data["ftx_us_crypto_df"], ticker, close_price)
+        update_prices(data["alameda_df"], ticker, close_price)
+    adjust_category_a(data["ftx_intl_crypto_df"])
+    adjust_category_a(data["ftx_us_crypto_df"])
+    return data
+
 def create_exchange_figs(new_data):
     dotcom_crypto_df = pd.DataFrame(data=new_data["ftx_intl_crypto_df"]["data"],
                                     index=new_data["ftx_intl_crypto_df"]["index"],
@@ -232,10 +279,13 @@ def create_exchange_figs(new_data):
 @app.callback(
     Output('exchange-overview-checkbox', 'value'),
     Output('hidden-div-checkboxes', 'data'),
-    [Input('exchange-overview-checkbox', 'value')],
+    [
+        Input('exchange-overview-checkbox', 'value'),
+        Input('exchange-overview-checkbox-pricing', 'value')
+    ],
     [State('hidden-div-checkboxes', 'data')]
 )
-def update_checkboxes(new_values, old_values):
+def update_checkboxes(new_values, pricing_checkbox_value, old_values):
     # Detect whether a value has just been added
     added_values = list(set(new_values) - set(old_values if old_values else []))
 
@@ -256,11 +306,18 @@ def update_checkboxes(new_values, old_values):
     Output('ftx_intl_pie_chart', 'figure'),
     Output('ftx_us_pie_chart', 'figure'),
     Output('recovery-rate-store', 'data'),
-    [Input('exchange-overview-checkbox', 'value')],
+    [
+        Input('exchange-overview-checkbox', 'value'),
+        Input('exchange-overview-checkbox-pricing', 'value')
+    ],
     [Input('data-store', 'data')]
 )
-def update_exchange_graphs(selected_items, data):
+def update_exchange_graphs(selected_items, pricing_items, data):
     data_adj = data.copy()
+
+    if 'CATEGORY_A_UPDATE' in pricing_items:
+        # Adjust the 'data_adj' dictionary as needed
+        data_adj = inject_last_close_crypto_prices(data_adj)
 
     if 'CLAIM_ALAMEDA' in selected_items:
         data_adj = claim_alameda(data_adj)
