@@ -15,13 +15,6 @@ def create_layout(visualizations):
                                 href="#"),
                     className="mr-auto"
                 ),
-                # dbc.NavItem(dbc.NavLink("Venture Portfolio", href="/new-page", style={"max-width": "160px",
-                #                                                                       "text-overflow": "ellipsis",
-                #                                                                       "white-space": "nowrap",
-                #                                                                       "overflow": "hidden",
-                #                                                                       "margin-right": "20px",
-                #                                                                       "vertical-align": "middle"}),
-                #             style={"margin-top": "5px"}),
                 dbc.NavLink(
                     html.Img(src='/assets/arceau.svg', className="align-self-center ml-auto", style={"height": "14px"}),
                     href="https://www.arceau.com/",
@@ -31,8 +24,8 @@ def create_layout(visualizations):
             html.Div([
                 html.H3([html.P("Chapter 11")]),
                 html.P(
-                    "On the 11th November 2022, FTX, the world’s third largest cryptocurrency exchange filed for Chapter"
-                    " 11 bankruptcy protection in the United States. At Arceau, we have "
+                    "On the 11th November 2022, FTX, the world’s third largest cryptocurrency exchange by trading volume"
+                    " filed for Chapter 11 bankruptcy protection in the United States. At Arceau, we have "
                     "been closely monitoring the proceedings and have compiled an interactive report on the identified "
                     "assets which predominantly consist of cash, crypto, property and venture invesments."
                 ),
