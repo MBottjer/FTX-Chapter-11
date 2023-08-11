@@ -4,6 +4,9 @@ from components.visualizations import create_visualizations, create_exchange_gra
     create_exchange_crypto_pie_chart, CATEGORY_B_ASSETS
 from layouts.layout import create_layout
 import pandas as pd
+import yfinance as yf
+import json
+from datetime import datetime, timedelta
 
 dataframes = load_data()
 dataframes_json = {k: v.to_dict(orient='split') for k, v in dataframes.items()}  # Convert to JSON serializable format
@@ -113,7 +116,7 @@ def subcon_non_crypto(data, silos, exchange, indices, recovery_rate=1.0):
 
     return data
 
-def subcon_alameda_dotcom_ventures(data):
+def  subcon_alameda_dotcom_ventures(data):
 
     # Add Cash to FTX International Cash / Stablecoin column
     data = add_cash_to_stablecoin(data, 'ftx_intl_crypto_df', ["Alameda", "Ventures"])
@@ -246,6 +249,65 @@ def inject_last_close_crypto_prices(data):
     adjust_category_a(data["ftx_us_crypto_df"])
     return data
 
+
+def get_last_close_price(ticker):
+    """Fetch the last closing price for a given ticker using yfinance."""
+
+    # Calculate the date of yesterday
+    yesterday = datetime.now() - timedelta(days=1)
+    yesterday_date = yesterday.strftime("%Y-%m-%d")
+
+    # Try to read from the cache file
+    try:
+        with open('cache.json', 'r') as f:
+            cache = json.load(f)
+
+        # Check if the data for the ticker and date is in the cache
+        if ticker in cache and yesterday_date in cache[ticker]:
+            return cache[ticker][yesterday_date]
+    except (FileNotFoundError, json.JSONDecodeError):
+        # If the file doesn't exist or is not valid JSON, create an empty cache
+        cache = {}
+
+    # If data is not in cache, fetch from yfinance
+    stock = yf.Ticker(ticker)
+    hist = stock.history(period="2d")  # Requesting 2 days to ensure we get 'yesterday' in case there's any data delay.
+    close_price = hist['Close'].iloc[-1]
+
+    # Add the data to the cache and save it to the file
+    if ticker not in cache:
+        cache[ticker] = {}
+    cache[ticker][yesterday_date] = close_price
+
+    with open('cache.json', 'w') as f:
+        json.dump(cache, f)
+
+    return close_price
+
+def inject_last_close_security_prices(data):
+    tickers = ["BITW", "ETHE", "GBTC", "HOOD"]
+    securities_df = data["securities_df"]
+    for row_idx, ticker_name in enumerate(securities_df['index']):
+        if ticker_name in tickers:
+            close_price = get_last_close_price(ticker_name)
+            quantity = securities_df['data'][row_idx][2]  # 'Quantity' column value for the current row
+            if quantity:  # Check if quantity is not None
+                estimated_value = round(close_price * quantity)/1000000.0
+                # Update 'Estimated Value' column for the current row
+                securities_df['data'][row_idx][6] = estimated_value
+            # Update 'Current Price' column for the current row
+            securities_df['data'][row_idx][3] = close_price
+
+    # Calculate the total of the 'Estimated Value' column
+    total_estimated_value = sum(row[6] for row in securities_df['data'])
+    assets_df = data["assets_df"]
+    liquid_securities_idx = assets_df['index'].index('Liquid Securities')
+    # Extracting the index of 'Alameda' in assets_df columns
+    alameda_col_idx = assets_df['columns'].index('Alameda')
+    assets_df['data'][liquid_securities_idx][alameda_col_idx] = total_estimated_value
+    return data
+
+
 def create_exchange_figs(new_data):
     dotcom_crypto_df = pd.DataFrame(data=new_data["ftx_intl_crypto_df"]["data"],
                                     index=new_data["ftx_intl_crypto_df"]["index"],
@@ -318,6 +380,8 @@ def update_exchange_graphs(selected_items, pricing_items, data):
     if 'CATEGORY_A_UPDATE' in pricing_items:
         # Adjust the 'data_adj' dictionary as needed
         data_adj = inject_last_close_crypto_prices(data_adj)
+    if 'LIQUID_SEC_UPDATE' in pricing_items:
+        data_adj = inject_last_close_security_prices(data_adj)
 
     if 'CLAIM_ALAMEDA' in selected_items:
         data_adj = claim_alameda(data_adj)

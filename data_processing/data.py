@@ -12,6 +12,7 @@ def load_data():
     cash_df = ftx_recovery_model_xlsx['Cash']
     assets_df = ftx_recovery_model_xlsx['Assets']
     liabilities_df = ftx_recovery_model_xlsx['Liabilities']
+    securities_df = ftx_recovery_model_xlsx['Securities']
 
     ftx_intl_crypto_df = ftx_recovery_model_xlsx['FTX International Crypto']
     ftx_us_crypto_df = ftx_recovery_model_xlsx['FTX US Crypto']
@@ -30,6 +31,7 @@ def load_data():
         "ftx_us_related_party_df": ftx_us_related_party_df,
         "alameda_df": alameda_df,
         "venture_df": venture_df,
+        "securities_df" : securities_df,
     }
 
     return dataframes
