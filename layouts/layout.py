@@ -31,10 +31,9 @@ def create_layout(visualizations):
                 ),
                 html.P(
                     "From the latest amended customer schedules, we estimate the total value of customer claims to be "
-                    "$10,917,696,560 for FTX International and $277,324,083 for FTX US. Combining Alameda creditors, "
+                    "$10.9B for FTX International and $277.3M for FTX US. Combining Alameda creditors, "
                     "compiling the list of venture assets and monitoring the estate's latest financial reports "
-                    "we present possible recoveries. Note, restructurings are subject to uncertainty and we welcome any "
-                    "and all feedback."
+                    "we present possible recoveries."
                 ),
                 html.Br(),
                 html.H3([html.P("FTX Assets - Silo Overview ($ in mm)")]),
