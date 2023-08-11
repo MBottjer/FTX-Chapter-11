@@ -41,7 +41,7 @@ def create_layout(visualizations):
                     "$10,917,696,560 for FTX International and $277,324,083 for FTX US. Combining Alameda creditors, "
                     "compiling the list of venture assets and monitoring the estate's latest financial reports "
                     "we present possible recoveries. Note, restructurings are subject to uncertainty and we welcome any "
-                    "and all feedback (feel free to message us on twitter @mbottjer and @LouisOrigny)."
+                    "and all feedback."
                 ),
                 html.Br(),
                 html.H3([html.P("FTX Assets - Silo Overview ($ in mm)")]),
